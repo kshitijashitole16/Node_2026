@@ -1,14 +1,17 @@
 import "dotenv/config";
 import express from "express";
+import cookieParser from "cookie-parser";
 import { connectDb, disconnectDb } from "./config/db.js";
 import movieRoutes from "./routes/movieRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import watchlistRoutes from "./routes/movieRoutes.js";
+import watchlistRoutes from "./routes/watchlistRoutes.js";
+
 
 await connectDb();
 
 const app = express();
 
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

@@ -53,7 +53,7 @@ const register = async (req, res) => {
       },
     });
     // jwt token
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, res);
 
     return res.status(201).json({
       status: "Success",
@@ -98,7 +98,7 @@ const login = async (req, res) => {
         .status(401)
         .json({ error: "Invalid email or password" });
     }
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, res);
 
     return res.status(200).json({
       status: "Success",
@@ -115,6 +115,20 @@ const login = async (req, res) => {
     return handleAuthError(res, error);
   }
 };
+
+const logout = async (req, res) => {
+  res.clearCookie("jwt", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+
+  return res.status(200).json({
+    status: "Success",
+    message: "Logged out successfully",
+  });
+};
+
 const deleteAccount = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -156,4 +170,4 @@ const deleteAccount = async (req, res) => {
   }
 };
 
-export { register, login, deleteAccount };
+export { register, login, logout, deleteAccount };
