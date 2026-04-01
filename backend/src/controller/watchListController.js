@@ -1,8 +1,15 @@
 import { prisma } from "../config/db.js";
 
+const VALID_WATCHLIST_STATUS = new Set([
+  "PLANNED",
+  "WATCHING",
+  "COMPLETED",
+  "DROPPED",
+]);
+
 const watchlistController = async (req, res) => {
   try {
-    const { movieId, status: watchlistStatus, rating, notes } = req.body;
+    const { movieId, status, rating, notes } = req.body;
     const userId = req.user?.id;
 
     if (!userId?.trim() || !movieId?.trim()) {
@@ -18,6 +25,12 @@ const watchlistController = async (req, res) => {
     if (!movie) {
       return res.status(404).json({
         error: "Movie not found",
+      });
+    }
+
+    if (status && !VALID_WATCHLIST_STATUS.has(status)) {
+      return res.status(400).json({
+        error: "Status must be one of: PLANNED, WATCHING, COMPLETED, DROPPED",
       });
     }
 
@@ -40,7 +53,7 @@ const watchlistController = async (req, res) => {
       data: {
         userId: userId.trim(),
         movieId: movieId.trim(),
-        status: watchlistStatus || "PLANNED",
+        status: status || "PLANNED",
         rating: rating ?? null,
         notes: notes?.trim() || null,
       },
@@ -102,21 +115,14 @@ const removeFromWatchlistController = async (req, res) => {
 };
 const getWatchlistController = async (req, res) => {
   try {
-    const {movieId} =req.body;
+    const { movieId } = req.params;
     const userId = req.user?.id;
-    if (!userId?.trim()) {
+    if (!userId?.trim() || !movieId?.trim()) {
       return res.status(400).json({
-        error: "Authenticated user is required",
+        error: "Authenticated user and movieId are required",
       });
     }
-    const watchlistItems = await prisma.watchlistItem.findMany({
-      where: {
-        userId: userId.trim(),
-      },
-      include: {
-        movie: true,
-      },
-    });
+
     const existingInWatchList = await prisma.watchlistItem.findUnique({
       where: {
         userId_movieId: {
@@ -124,8 +130,11 @@ const getWatchlistController = async (req, res) => {
           movieId: movieId.trim(),
         },
       },
+      include: {
+        movie: true,
+      },
     });
-    
+
     if (!existingInWatchList) {
       return res.status(404).json({
         error: "Movie not found in the watchlist",
@@ -133,8 +142,8 @@ const getWatchlistController = async (req, res) => {
     }
     return res.status(200).json({
       success: true,
-      message: "Watchlist items fetched successfully",
-      data: watchlistItems,
+      message: "Watchlist item fetched successfully",
+      data: existingInWatchList,
     });
   } catch (error) {
     console.error(error);
