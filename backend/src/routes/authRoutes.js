@@ -2,6 +2,7 @@ import express from "express";
 import {
   register,
   login,
+  refresh,
   logout,
   deleteAccount,
 } from "../controller/authController.js";
@@ -11,7 +12,8 @@ import { validateRequest } from "../middleware/validateRequest.js";
 const router = express.Router();
 
 router.post("/register",validateRequest(registerSchema), register);
-router.post("/login",validateRequest(loginSchema), login);
+router.post("/login", validateRequest(loginSchema), login);
+router.post("/refresh", refresh);
 router.post("/logout", logout);
 router.delete("/account",validateRequest(loginSchema), deleteAccount);
 

@@ -1,23 +1,91 @@
-import { Prisma } from "@prisma/client";
+import prismaPkg from "@prisma/client";
 import { prisma } from "../config/db.js";
+
+const { Prisma } = prismaPkg;
 import bcrypt from "bcryptjs";
-import { generateToken } from "../utils/generateToken.js";
+import {
+  issueTokens,
+  createAccessTokenFromRefreshToken,
+  clearAuthCookies,
+} from "../utils/generateToken.js";
+
+const DB_UNAVAILABLE_MSG =
+  "Database unreachable or timed out. Open the Neon console to wake the project, check DATABASE_URL, try a \"Direct\" connection string if the pooler times out, and ensure port 5432 is not blocked (VPN / firewall).";
+
+function isDbConnectivityError(error) {
+  const code = error?.code;
+  if (
+    code === "P1001" ||
+    code === "ETIMEDOUT" ||
+    code === "ECONNREFUSED" ||
+    code === "ENOTFOUND"
+  ) {
+    return true;
+  }
+  const msg = String(error?.message ?? "");
+  return /Can't reach database|ETIMEDOUT|ECONNREFUSED|ENOTFOUND|connection.*(timed out|timeout)|connect timeout|P1001/i.test(
+    msg
+  );
+}
 
 function handleAuthError(res, error) {
   console.error(error);
-  if (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P1001"
-  ) {
+  const dev = process.env.NODE_ENV !== "production";
+
+  if (isDbConnectivityError(error)) {
     return res.status(503).json({
-      error:
-        "Database unreachable. Confirm DATABASE_URL, wake the Neon project, and check your network.",
+      error: DB_UNAVAILABLE_MSG,
+      ...(dev && { code: error.code }),
     });
   }
-  if (String(error.message).includes("JWT_SECRET")) {
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      return res.status(400).json({
+        error: "User already exists with this email",
+      });
+    }
+    if (error.code === "P2021" || error.code === "P2022") {
+      return res.status(503).json({
+        error:
+          "Database schema is out of date. Run: cd backend && npx prisma migrate deploy",
+        ...(dev && { code: error.code }),
+      });
+    }
+    return res.status(500).json({
+      error: "Database error",
+      ...(dev && { code: error.code, detail: error.message }),
+    });
+  }
+
+  if (
+    String(error.message).includes("JWT_") &&
+    String(error.message).includes("missing")
+  ) {
     return res.status(500).json({ error: error.message });
   }
-  return res.status(500).json({ error: "Internal Server Error" });
+
+  if (error?.name === "JsonWebTokenError" || error?.name === "TokenExpiredError") {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  return res.status(500).json({
+    error: "Internal Server Error",
+    ...(dev && { detail: error?.message }),
+  });
+}
+
+/** Postgres unique email is case-sensitive; store lowercase and match case-insensitively for login. */
+function normalizeEmail(email) {
+  return String(email ?? "").trim().toLowerCase();
+}
+
+async function findUserByEmailCaseInsensitive(emailNorm) {
+  return prisma.user.findFirst({
+    where: {
+      email: { equals: emailNorm, mode: "insensitive" },
+    },
+  });
 }
 
 const register = async (req, res) => {
@@ -30,11 +98,9 @@ const register = async (req, res) => {
       });
     }
 
-    const emailNorm = email.trim();
+    const emailNorm = normalizeEmail(email);
 
-    const userExist = await prisma.user.findUnique({
-      where: { email: emailNorm },
-    });
+    const userExist = await findUserByEmailCaseInsensitive(emailNorm);
 
     if (userExist) {
       return res
@@ -43,7 +109,7 @@ const register = async (req, res) => {
     }
 
     const salt = await bcrypt.genSalt(10);
-    const hashPassword = await bcrypt.hash(password, salt);
+    const hashPassword = await bcrypt.hash(String(password), salt);
 
     const user = await prisma.user.create({
       data: {
@@ -52,8 +118,7 @@ const register = async (req, res) => {
         password: hashPassword,
       },
     });
-    // jwt token
-    const token = generateToken(user.id, res);
+    const accessToken = issueTokens(user.id, res);
 
     return res.status(201).json({
       status: "Success",
@@ -63,7 +128,7 @@ const register = async (req, res) => {
           name: user.name,
           email: user.email,
         },
-        token,
+        accessToken,
       },
     });
   } catch (error) {
@@ -80,11 +145,9 @@ const login = async (req, res) => {
       });
     }
 
-    const emailNorm = email.trim();
+    const emailNorm = normalizeEmail(email);
 
-    const user = await prisma.user.findUnique({
-      where: { email: emailNorm },
-    });
+    const user = await findUserByEmailCaseInsensitive(emailNorm);
 
     if (!user) {
       return res
@@ -92,13 +155,13 @@ const login = async (req, res) => {
         .json({ error: "Invalid email or password" });
     }
 
-    const match = await bcrypt.compare(password, user.password);
+    const match = await bcrypt.compare(String(password), user.password);
     if (!match) {
       return res
         .status(401)
         .json({ error: "Invalid email or password" });
     }
-    const token = generateToken(user.id, res);
+    const accessToken = issueTokens(user.id, res);
 
     return res.status(200).json({
       status: "Success",
@@ -108,7 +171,7 @@ const login = async (req, res) => {
           name: user.name,
           email: user.email,
         },
-        token,
+        accessToken,
       },
     });
   } catch (error) {
@@ -116,12 +179,30 @@ const login = async (req, res) => {
   }
 };
 
+const refresh = async (req, res) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken;
+    if (!refreshToken) {
+      clearAuthCookies(res);
+      return res.status(401).json({ error: "No refresh token" });
+    }
+
+    const accessToken = createAccessTokenFromRefreshToken(refreshToken, res);
+    if (!accessToken) {
+      return res.status(401).json({ error: "Invalid or expired refresh token" });
+    }
+
+    return res.status(200).json({
+      status: "Success",
+      data: { accessToken },
+    });
+  } catch (error) {
+    return handleAuthError(res, error);
+  }
+};
+
 const logout = async (req, res) => {
-  res.clearCookie("jwt", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
+  clearAuthCookies(res);
 
   return res.status(200).json({
     status: "Success",
@@ -139,17 +220,15 @@ const deleteAccount = async (req, res) => {
       });
     }
 
-    const emailNorm = email.trim();
+    const emailNorm = normalizeEmail(email);
 
-    const user = await prisma.user.findUnique({
-      where: { email: emailNorm },
-    });
+    const user = await findUserByEmailCaseInsensitive(emailNorm);
 
     if (!user) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    const match = await bcrypt.compare(password, user.password);
+    const match = await bcrypt.compare(String(password), user.password);
     if (!match) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
@@ -170,4 +249,4 @@ const deleteAccount = async (req, res) => {
   }
 };
 
-export { register, login, logout, deleteAccount };
+export { register, login, refresh, logout, deleteAccount };

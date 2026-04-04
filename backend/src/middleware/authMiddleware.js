@@ -19,8 +19,14 @@ export const authMiddleware = async (req, res, next) => {
     return res.status(401).json({ error: "Unauthorized token" });
   }
 
+  const accessSecret =
+    process.env.JWT_ACCESS_SECRET?.trim() || process.env.JWT_SECRET?.trim();
+  if (!accessSecret) {
+    return res.status(500).json({ error: "Server JWT configuration error" });
+  }
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, accessSecret);
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
     });

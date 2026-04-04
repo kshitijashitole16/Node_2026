@@ -1,11 +1,4 @@
-import { prisma } from "../src/config/db.js";
-
-
-
-
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma, disconnectDb } from "../src/config/db.js";
 
 const userId = "bed29a3e-8386-4506-b44b-8fd7fb886c23";
 
@@ -125,5 +118,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await disconnectDb();
   });

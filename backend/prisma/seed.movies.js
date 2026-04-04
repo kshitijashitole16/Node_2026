@@ -1,4 +1,4 @@
-import { prisma } from "../src/config/db.js";
+import { prisma, disconnectDb } from "../src/config/db.js";
 
 const TITLES = [
   "The Matrix",
@@ -63,5 +63,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await disconnectDb();
   });
