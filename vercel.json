@@ -17,6 +17,18 @@
       "destination": "backend/server.js"
     },
     {
+      "source": "/auth/(.*)",
+      "destination": "backend/server.js"
+    },
+    {
+      "source": "/movies/(.*)",
+      "destination": "backend/server.js"
+    },
+    {
+      "source": "/watchlist/(.*)",
+      "destination": "backend/server.js"
+    },
+    {
       "source": "/(.*)",
       "destination": "frontend/$1"
     }

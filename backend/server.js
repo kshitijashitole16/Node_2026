@@ -1,2 +1,3 @@
-// Shim so `node server.js` / `nodemon server.js` from project root works.
-import './src/server.js';
+import app from "./src/server.js";
+
+export default app;
