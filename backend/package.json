@@ -11,6 +11,7 @@
   "main": "src/server.js",
   "scripts": {
     "build": "prisma generate",
+    "postinstall": "prisma generate",
     "start": "prisma migrate deploy && node src/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/server.js",
@@ -27,6 +28,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "7.6.0",
     "@prisma/client": "7.6.0",
+    "prisma": "7.6.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
