@@ -35,4 +35,82 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-export { registerSchema, loginSchema };
+const verifyEmailSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .email("Please provide a valid email")
+    .toLowerCase(),
+  otp: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Enter the 6-digit code from your email"),
+});
+
+const resendVerificationSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .email("Please provide a valid email")
+    .toLowerCase(),
+});
+
+const forgotPasswordRequestSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .email("Please provide a valid email")
+    .toLowerCase(),
+});
+
+const forgotPasswordVerifyOtpSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .email("Please provide a valid email")
+    .toLowerCase(),
+  otp: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Enter the 6-digit code from your email"),
+});
+
+const forgotPasswordResetSchema = z
+  .object({
+    email: z
+      .string()
+      .trim()
+      .min(1, "Email is required")
+      .email("Please provide a valid email")
+      .toLowerCase(),
+    otp: z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/, "Enter the 6-digit code from your email"),
+    newPassword: z
+      .string()
+      .min(1, "New password is required")
+      .min(6, "Password must be at least 6 characters"),
+    confirmPassword: z
+      .string()
+      .min(1, "Confirm password is required")
+      .min(6, "Password must be at least 6 characters"),
+  })
+  .refine((v) => v.newPassword === v.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords do not match",
+  });
+
+export {
+  registerSchema,
+  loginSchema,
+  verifyEmailSchema,
+  resendVerificationSchema,
+  forgotPasswordRequestSchema,
+  forgotPasswordVerifyOtpSchema,
+  forgotPasswordResetSchema,
+};

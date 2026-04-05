@@ -18,11 +18,29 @@ model User {
   email String @unique
   password String
 
+  /// New signups set to false until OTP is verified; @default(true) keeps existing rows verified after migration.
+  emailVerified     Boolean   @default(true)
+  emailOtpHash      String?
+  emailOtpExpiresAt DateTime?
+
   createdAt DateTime @default(now())
 
   // Relations
   movies         Movie[]         @relation("MovieCreator")
   watchlistItems WatchlistItem[]
+}
+
+model PendingRegistration {
+  id String @id @default(uuid())
+  name String
+  email String @unique
+  password String
+  emailOtpHash String
+  emailOtpExpiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("RegistrationPending")
 }
 
 model Movie {

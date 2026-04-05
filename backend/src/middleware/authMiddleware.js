@@ -35,6 +35,14 @@ export const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ error: "User no longer exists" });
     }
 
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        error: "Please verify your email to use this resource.",
+        needsEmailVerification: true,
+        email: user.email,
+      });
+    }
+
     req.user = user;
     next();
   } catch {
