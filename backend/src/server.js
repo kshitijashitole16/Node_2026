@@ -38,11 +38,22 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.use(async (_req, res, next) => {
+  try {
+    await connectDb();
+    next();
+  } catch (error) {
+    console.error("Database initialization failed:", error?.message || error);
+    return res.status(503).json({
+      error:
+        "Database is unavailable. Check DATABASE_URL/Neon status and run migrations.",
+    });
+  }
+});
+
 app.use("/movies", movieRoutes);
 app.use("/auth", authRoutes);
 app.use("/watchlist", watchlistRoutes);
-
-await connectDb();
 
 const isVercel = Boolean(process.env.VERCEL);
 

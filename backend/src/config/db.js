@@ -12,9 +12,9 @@ function resolveDatabaseUrl() {
   const raw = process.env.DATABASE_URL?.trim();
   if (!raw) {
     console.error(
-      "DATABASE_URL is missing. Create backend/.env with:\n  DATABASE_URL=\"postgresql://USER:PASSWORD@HOST/DB?sslmode=require\""
+      "DATABASE_URL is missing. Set DATABASE_URL in environment variables."
     );
-    process.exit(1);
+    return "";
   }
 
   try {
@@ -56,7 +56,7 @@ function resolveDatabaseUrl() {
 
 const connectionString = resolveDatabaseUrl();
 
-const poolOptions = { connectionString };
+const poolOptions = connectionString ? { connectionString } : {};
 const poolMax = Number(process.env.PG_POOL_MAX);
 if (Number.isFinite(poolMax) && poolMax > 0) {
   poolOptions.max = poolMax;
@@ -77,20 +77,32 @@ const prisma = new PrismaClient({
       : ["error"],
 });
 
+let isConnected = false;
+let connectPromise = null;
+
 const connectDb = async () => {
-  try {
-    await prisma.$connect();
-    await prisma.$queryRaw`SELECT 1`;
-    console.log("DB connected via Prisma (query check OK)");
-  } catch (error) {
-    console.error("DB connection error:", error.message);
-    const unreachable =
-      error.code === "P1001" ||
-      String(error.message).includes("Can't reach database");
-    if (unreachable) {
-      const hostMatch = process.env.DATABASE_URL?.match(/@([^/?]+)/);
-      const host = hostMatch ? hostMatch[1] : "(unknown host)";
-      console.error(`
+  if (isConnected) return;
+  if (connectPromise) {
+    await connectPromise;
+    return;
+  }
+
+  connectPromise = (async () => {
+    try {
+      await prisma.$connect();
+      await prisma.$queryRaw`SELECT 1`;
+      isConnected = true;
+      console.log("DB connected via Prisma (query check OK)");
+    } catch (error) {
+      isConnected = false;
+      console.error("DB connection error:", error.message);
+      const unreachable =
+        error.code === "P1001" ||
+        String(error.message).includes("Can't reach database");
+      if (unreachable) {
+        const hostMatch = process.env.DATABASE_URL?.match(/@([^/?]+)/);
+        const host = hostMatch ? hostMatch[1] : "(unknown host)";
+        console.error(`
 Database unreachable (TCP to Postgres failed). This is a network / Neon issue, not Express.
 
 Quick checks:
@@ -102,14 +114,20 @@ Quick checks:
 
 Host from your URL: ${host}
 `);
+      }
+      throw error;
+    } finally {
+      connectPromise = null;
     }
-    process.exit(1);
-  }
+  })();
+
+  await connectPromise;
 };
 
 const disconnectDb = async () => {
   await prisma.$disconnect();
   await pool.end();
+  isConnected = false;
 };
 
 export { prisma, connectDb, disconnectDb };
