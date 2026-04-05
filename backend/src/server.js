@@ -31,6 +31,20 @@ function normalizeOrigin(origin) {
   return String(origin || "").trim().replace(/\/+$/, "");
 }
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function wildcardToRegex(pattern) {
+  const normalized = normalizeOrigin(pattern);
+  if (!normalized.includes("*")) return null;
+  const regexPattern = normalized
+    .split("*")
+    .map(escapeRegex)
+    .join(".*");
+  return new RegExp(`^${regexPattern}$`);
+}
+
 function buildAllowedOrigins() {
   const defaults = ["http://localhost:5173"];
   const envValues = [
@@ -47,17 +61,29 @@ function buildAllowedOrigins() {
     .filter(Boolean);
 }
 
-const allowedOrigins = new Set(buildAllowedOrigins());
+const allowedOrigins = buildAllowedOrigins();
+const exactAllowedOrigins = new Set(
+  allowedOrigins.filter((origin) => !origin.includes("*"))
+);
+const wildcardAllowedOrigins = allowedOrigins
+  .map(wildcardToRegex)
+  .filter(Boolean);
+
+function isOriginAllowed(origin) {
+  const requestOrigin = normalizeOrigin(origin);
+  if (exactAllowedOrigins.has(requestOrigin)) return true;
+  return wildcardAllowedOrigins.some((regex) => regex.test(requestOrigin));
+}
+
 app.use(
   cors({
     origin(origin, cb) {
       // Allow non-browser clients (curl/postman) without Origin header.
       if (!origin) return cb(null, true);
 
-      const requestOrigin = normalizeOrigin(origin);
-      if (allowedOrigins.has(requestOrigin)) return cb(null, true);
+      if (isOriginAllowed(origin)) return cb(null, true);
 
-      return cb(new Error(`CORS blocked for origin: ${requestOrigin}`));
+      return cb(new Error(`CORS blocked for origin: ${normalizeOrigin(origin)}`));
     },
     credentials: true,
   })
