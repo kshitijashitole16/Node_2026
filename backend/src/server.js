@@ -27,10 +27,38 @@ if (!process.env.SMTP_USER?.trim() || !process.env.SMTP_PASS?.trim()) {
 
 const app = express();
 
-const frontendOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
+function normalizeOrigin(origin) {
+  return String(origin || "").trim().replace(/\/+$/, "");
+}
+
+function buildAllowedOrigins() {
+  const defaults = ["http://localhost:5173"];
+  const envValues = [
+    process.env.FRONTEND_URL,
+    process.env.CORS_ORIGINS,
+    process.env.VERCEL_BRANCH_URL && `https://${process.env.VERCEL_BRANCH_URL}`,
+    process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
+  ];
+
+  return [...defaults, ...envValues]
+    .filter(Boolean)
+    .flatMap((value) => String(value).split(","))
+    .map(normalizeOrigin)
+    .filter(Boolean);
+}
+
+const allowedOrigins = new Set(buildAllowedOrigins());
 app.use(
   cors({
-    origin: frontendOrigin,
+    origin(origin, cb) {
+      // Allow non-browser clients (curl/postman) without Origin header.
+      if (!origin) return cb(null, true);
+
+      const requestOrigin = normalizeOrigin(origin);
+      if (allowedOrigins.has(requestOrigin)) return cb(null, true);
+
+      return cb(new Error(`CORS blocked for origin: ${requestOrigin}`));
+    },
     credentials: true,
   })
 );
