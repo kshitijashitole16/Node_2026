@@ -1,6 +1,10 @@
 import express from "express";
 
-import { getWatchlistController, removeFromWatchlistController, watchlistController } from "../controller/watchlistController.js";
+import {
+  getWatchlistController,
+  removeFromWatchlistController,
+  watchlistController,
+} from "../controller/watchListController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { validateRequest } from "../middleware/validateRequest.js";
 import { addTowatchlistScheme } from "../validators/watchlistvalidators.js";

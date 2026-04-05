@@ -8,7 +8,7 @@ import cookieParser from "cookie-parser";
 import { connectDb, disconnectDb } from "./config/db.js";
 import movieRoutes from "./routes/movieRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import watchlistRoutes from "./routes/watchlistRoutes.js";
+import watchlistRoutes from "./routes/watchListRoutes.js";
 
 const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 dotenv.config({ path: path.join(backendRoot, ".env"), override: true });
