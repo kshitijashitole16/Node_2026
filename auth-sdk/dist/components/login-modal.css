@@ -1,0 +1,167 @@
+.authify-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 15, 28, 0.62);
+  backdrop-filter: blur(3px);
+  padding: 1rem;
+}
+
+.authify-modal {
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --danger: #b91c1c;
+
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 45px rgba(2, 6, 23, 0.25);
+  padding: 1.1rem 1.1rem 1.15rem;
+  position: relative;
+}
+
+.authify-modal-close {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.55rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.authify-modal-close:hover {
+  color: var(--text);
+  background: var(--surface-muted);
+}
+
+.authify-modal-close:focus-visible {
+  outline: 2px solid var(--authify-primary);
+  outline-offset: 2px;
+}
+
+.authify-modal-header {
+  text-align: center;
+  margin-bottom: 0.95rem;
+}
+
+.authify-modal-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 0.45rem;
+}
+
+.authify-modal-appname {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.authify-modal-title {
+  margin: 0.42rem 0 0;
+  font-size: 1.2rem;
+  line-height: 1.25;
+}
+
+.authify-modal-subtitle {
+  margin: 0.42rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.authify-modal-form {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.authify-modal-label {
+  font-size: 0.84rem;
+  color: #334155;
+  font-weight: 500;
+}
+
+.authify-modal-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.72rem 0.8rem;
+  font: inherit;
+  color: var(--text);
+  background: #fff;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.authify-modal-input:focus {
+  border-color: var(--authify-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--authify-primary) 20%, transparent);
+}
+
+.authify-modal-input[aria-invalid="true"] {
+  border-color: #fca5a5;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18);
+}
+
+.authify-modal-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.84rem;
+}
+
+.authify-modal-submit {
+  border: none;
+  border-radius: 10px;
+  padding: 0.74rem 0.9rem;
+  font: inherit;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--authify-primary);
+  cursor: pointer;
+  transition: filter 140ms ease, transform 120ms ease;
+}
+
+.authify-modal-submit:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.authify-modal-submit:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.authify-modal-submit:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--authify-primary) 45%, #000000);
+  outline-offset: 2px;
+}
+
+.authify-modal-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .authify-modal {
+    max-width: none;
+    border-radius: 12px;
+    padding: 1rem;
+  }
+}

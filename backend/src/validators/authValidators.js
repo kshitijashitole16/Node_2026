@@ -105,6 +105,61 @@ const forgotPasswordResetSchema = z
     message: "Passwords do not match",
   });
 
+const otpPurposeSchema = z.enum([
+  "RegisterAuthOtp",
+  "ForgotAuthOtp",
+  "Authify_Register_user",
+  "Authify_Forgot_password",
+]);
+
+const sendOtpSchema = z
+  .object({
+    purpose: otpPurposeSchema,
+    email: z
+      .string()
+      .trim()
+      .min(1, "Email is required")
+      .email("Please provide a valid email")
+      .toLowerCase(),
+    name: z.string().trim().min(2, "Name must be at least 2 characters").optional(),
+    password: z
+      .string()
+      .min(6, "Password must be at least 6 characters")
+      .optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.purpose === "RegisterAuthOtp" || value.purpose === "Authify_Register_user") {
+      if (!value.name) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Name is required for RegisterAuthOtp/Authify_Register_user",
+          path: ["name"],
+        });
+      }
+      if (!value.password) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Password is required for RegisterAuthOtp/Authify_Register_user",
+          path: ["password"],
+        });
+      }
+    }
+  });
+
+const verifyOtpSchema = z.object({
+  purpose: otpPurposeSchema,
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email is required")
+    .email("Please provide a valid email")
+    .toLowerCase(),
+  otp: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Enter the 6-digit code from your email"),
+});
+
 export {
   registerSchema,
   loginSchema,
@@ -113,4 +168,6 @@ export {
   forgotPasswordRequestSchema,
   forgotPasswordVerifyOtpSchema,
   forgotPasswordResetSchema,
+  sendOtpSchema,
+  verifyOtpSchema,
 };

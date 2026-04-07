@@ -1,11 +1,18 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext.jsx";
 import { logoutRequest, setAccessToken } from "../api/authApi.js";
+import { fetchAuthAnalytics } from "../api/analyticsApi.js";
+import { ChartCard } from "../components/charts/ChartCard.jsx";
+import { AnalyticsLineChart } from "../components/charts/AnalyticsLineChart.jsx";
+import { AnalyticsPieChart } from "../components/charts/AnalyticsPieChart.jsx";
+import { AuthAssistantCard } from "../components/charts/AuthAssistantCard.jsx";
 
 export function HomePage() {
-  const { logoutLocal } = useAuth();
+  const { logoutLocal, user } = useAuth();
   const navigate = useNavigate();
+  const [days, setDays] = useState(30);
 
   const logoutMutation = useMutation({
     mutationFn: logoutRequest,
@@ -16,110 +23,162 @@ export function HomePage() {
     },
   });
 
+  const analyticsQuery = useQuery({
+    queryKey: ["auth-analytics", days],
+    queryFn: () => fetchAuthAnalytics({ days }),
+    staleTime: 60_000,
+  });
+
+  const analytics = analyticsQuery.data?.data;
+  const dailyLogins = analytics?.charts?.dailyLogins ?? [];
+  const loginTotals = analytics?.totals?.logins ?? {
+    success: 0,
+    failure: 0,
+    total: 0,
+    successRate: 0,
+  };
+  const otpTotals = analytics?.totals?.otp ?? {
+    success: 0,
+    failure: 0,
+    total: 0,
+    successRate: 0,
+  };
+  const uniqueUsers = analytics?.totals?.uniqueSuccessfulLoginUsers ?? 0;
+
+  const otpPieData = useMemo(
+    () => [
+      { name: "OTP Success", value: otpTotals.success, color: "#34d399" },
+      { name: "OTP Failure", value: otpTotals.failure, color: "#fb7185" },
+    ],
+    [otpTotals.failure, otpTotals.success]
+  );
+
+  const loginLineConfig = useMemo(
+    () => [
+      { key: "success", label: "Success", color: "#60a5fa" },
+      { key: "failure", label: "Failure", color: "#f87171" },
+    ],
+    []
+  );
+
+  const rangeButtons = [7, 30, 90];
+
   return (
-    <div className="coming-shell">
-      <header className="coming-top">
-        <button
-          type="button"
-          className="coming-logout"
-          onClick={() => logoutMutation.mutate()}
-          disabled={logoutMutation.isPending}
-        >
-          {logoutMutation.isPending ? "Logging out…" : "Logout"}
-        </button>
+    <div className="dashboard-shell">
+      <header className="dashboard-top">
+        <div className="dashboard-top__title-wrap">
+          <p className="dashboard-eyebrow">Auth Analytics</p>
+          <h1 className="dashboard-title">Authentication Intelligence Dashboard</h1>
+          <p className="dashboard-subtitle">
+            Monitor login trends, OTP conversion, and failure patterns in real time.
+          </p>
+        </div>
+        <div className="dashboard-top__actions">
+          <div className="dashboard-range" role="group" aria-label="Select date range">
+            {rangeButtons.map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={`dashboard-range__btn ${days === value ? "is-active" : ""}`}
+                onClick={() => setDays(value)}
+                disabled={analyticsQuery.isFetching}
+              >
+                {value}D
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="dashboard-logout"
+            onClick={() => logoutMutation.mutate()}
+            disabled={logoutMutation.isPending}
+          >
+            {logoutMutation.isPending ? "Logging out…" : "Logout"}
+          </button>
+        </div>
       </header>
 
-      <div className="coming-waves" aria-hidden>
-        <div className="coming-glow coming-glow--one" />
-        <div className="coming-glow coming-glow--two" />
-        <div className="coming-glow coming-glow--three" />
+      {analyticsQuery.error ? (
+        <div className="dashboard-alert" role="alert">
+          {analyticsQuery.error?.data?.error ||
+            analyticsQuery.error?.message ||
+            "Could not load analytics"}
+        </div>
+      ) : null}
 
-        <svg
-          className="coming-wave-svg coming-wave-svg--a"
-          viewBox="0 0 1600 900"
-          preserveAspectRatio="none"
+      <section className="dashboard-kpis">
+        <article className="kpi-card">
+          <p className="kpi-card__label">Login Success Rate</p>
+          <p className="kpi-card__value">
+            {Number(loginTotals.successRate || 0).toFixed(2)}%
+          </p>
+          <p className="kpi-card__meta">
+            {loginTotals.success} success / {loginTotals.failure} failure
+          </p>
+        </article>
+        <article className="kpi-card">
+          <p className="kpi-card__label">OTP Success Rate</p>
+          <p className="kpi-card__value">
+            {Number(otpTotals.successRate || 0).toFixed(2)}%
+          </p>
+          <p className="kpi-card__meta">
+            {otpTotals.success} success / {otpTotals.failure} failure
+          </p>
+        </article>
+        <article className="kpi-card">
+          <p className="kpi-card__label">Unique Login Users</p>
+          <p className="kpi-card__value">{uniqueUsers}</p>
+          <p className="kpi-card__meta">Signed in during last {days} days</p>
+        </article>
+        <article className="kpi-card">
+          <p className="kpi-card__label">Signed In As</p>
+          <p className="kpi-card__value kpi-card__value--email">{user?.email || "-"}</p>
+          <p className="kpi-card__meta">Session is active</p>
+        </article>
+      </section>
+
+      <section className="dashboard-grid">
+        <ChartCard
+          title="Login Trends Per Day"
+          subtitle={`Success vs failure over the last ${days} days`}
         >
-          <defs>
-            <linearGradient id="waveGradA" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#ff114f" />
-              <stop offset="50%" stopColor="#a600ff" />
-              <stop offset="100%" stopColor="#2ad7ff" />
-            </linearGradient>
-          </defs>
-          <path
-            className="coming-wave-path"
-            d="M-140 300 C 80 90, 330 110, 530 270 S 980 520, 1230 360 S 1670 110, 1760 280"
-            stroke="url(#waveGradA)"
-          />
-          <path
-            className="coming-wave-path"
-            d="M-160 380 C 120 230, 380 210, 620 360 S 1080 650, 1340 470 S 1750 260, 1820 430"
-            stroke="url(#waveGradA)"
-          />
-          <path
-            className="coming-wave-path"
-            d="M-200 500 C 60 360, 340 330, 600 470 S 1140 760, 1400 620 S 1780 450, 1880 560"
-            stroke="url(#waveGradA)"
-          />
-        </svg>
+          {analyticsQuery.isLoading ? (
+            <div className="chart-loading">Loading chart...</div>
+          ) : (
+            <AnalyticsLineChart
+              data={dailyLogins}
+              xKey="date"
+              lines={loginLineConfig}
+              height={320}
+            />
+          )}
+        </ChartCard>
 
-        <svg
-          className="coming-wave-svg coming-wave-svg--b"
-          viewBox="0 0 1600 900"
-          preserveAspectRatio="none"
+        <ChartCard
+          title="OTP Success vs Failure"
+          subtitle="Distribution of OTP outcomes"
         >
-          <defs>
-            <linearGradient id="waveGradB" x1="100%" y1="0%" x2="0%" y2="0%">
-              <stop offset="0%" stopColor="#ff1744" />
-              <stop offset="55%" stopColor="#0060ff" />
-              <stop offset="100%" stopColor="#28e7ff" />
-            </linearGradient>
-          </defs>
-          <path
-            className="coming-wave-path coming-wave-path--soft"
-            d="M-80 610 C 120 380, 380 360, 590 540 S 1010 780, 1270 590 S 1660 290, 1820 500"
-            stroke="url(#waveGradB)"
-          />
-          <path
-            className="coming-wave-path coming-wave-path--soft"
-            d="M-60 700 C 150 500, 390 500, 620 640 S 1120 860, 1360 700 S 1730 420, 1880 620"
-            stroke="url(#waveGradB)"
-          />
-        </svg>
+          {analyticsQuery.isLoading ? (
+            <div className="chart-loading">Loading chart...</div>
+          ) : (
+            <AnalyticsPieChart
+              data={otpPieData}
+              height={320}
+              emptyMessage="No OTP success/failure events in selected range."
+            />
+          )}
+        </ChartCard>
+      </section>
 
-        <svg
-          className="coming-wave-svg coming-wave-svg--c"
-          viewBox="0 0 1600 900"
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient id="waveGradC" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#00c6ff" />
-              <stop offset="45%" stopColor="#9f00ff" />
-              <stop offset="100%" stopColor="#ff2f67" />
-            </linearGradient>
-          </defs>
-          <path
-            className="coming-wave-path coming-wave-path--thin"
-            d="M-200 460 C 20 220, 300 220, 530 440 S 1040 770, 1320 560 S 1730 240, 1850 450"
-            stroke="url(#waveGradC)"
-          />
-          <path
-            className="coming-wave-path coming-wave-path--thin"
-            d="M-180 250 C 40 70, 310 60, 550 230 S 980 460, 1210 310 S 1680 50, 1860 220"
-            stroke="url(#waveGradC)"
-          />
-        </svg>
-      </div>
+      <section className="dashboard-assistant">
+        <AuthAssistantCard days={days} />
+      </section>
 
-      <main className="coming-content">
-        <p className="coming-kicker">Launching Soon</p>
-        <h1 className="coming-title">AI Resume Builder for Top Companies</h1>
-        <p className="coming-subtitle">
-          Build yourself for big opportunities. Your AI career copilot, powered
-          by your resume, is coming soon.
+      <section className="dashboard-footnote">
+        <p>
+          Source: <code>/analytics/auth?days={days}</code>
         </p>
-      </main>
+      </section>
     </div>
   );
 }

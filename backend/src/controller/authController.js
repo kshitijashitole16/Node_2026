@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import prismaPkg from "@prisma/client";
 import { prisma } from "../config/db.js";
 
@@ -14,6 +15,11 @@ import {
   sendWelcomeEmail,
   sendPasswordResetOtpEmail,
 } from "../utils/emailService.js";
+import {
+  AUTH_EVENT_STATUS,
+  AUTH_EVENT_TYPE,
+  recordAuthEvent,
+} from "../services/authEventService.js";
 
 const DB_UNAVAILABLE_MSG =
   "Database unreachable or timed out. Open the Neon console to wake the project, check DATABASE_URL, try a \"Direct\" connection string if the pooler times out, and ensure port 5432 is not blocked (VPN / firewall).";
@@ -634,6 +640,12 @@ const verifyEmail = async (req, res) => {
     if (pending) {
       const pendingExpiry = new Date(pending.emailOtpExpiresAt).getTime();
       if (!Number.isFinite(pendingExpiry) || pendingExpiry < Date.now()) {
+        void recordAuthEvent({
+          req,
+          eventType: AUTH_EVENT_TYPE.OTP_EMAIL_VERIFICATION,
+          status: AUTH_EVENT_STATUS.FAILURE,
+          metadata: { reason: "otp_expired", flow: "registration_pending" },
+        });
         return res.status(400).json({
           error: "Verification code expired. Request a new code.",
         });
@@ -641,6 +653,12 @@ const verifyEmail = async (req, res) => {
 
       const match = await bcrypt.compare(String(otp).trim(), pending.emailOtpHash);
       if (!match) {
+        void recordAuthEvent({
+          req,
+          eventType: AUTH_EVENT_TYPE.OTP_EMAIL_VERIFICATION,
+          status: AUTH_EVENT_STATUS.FAILURE,
+          metadata: { reason: "invalid_otp", flow: "registration_pending" },
+        });
         return res.status(400).json({ error: "Invalid verification code" });
       }
 
@@ -687,6 +705,16 @@ const verifyEmail = async (req, res) => {
       if (!alreadyVerified) {
         void sendWelcomeEmail(user.email, user.name);
       }
+      void recordAuthEvent({
+        req,
+        userId: user.id,
+        eventType: AUTH_EVENT_TYPE.OTP_EMAIL_VERIFICATION,
+        status: AUTH_EVENT_STATUS.SUCCESS,
+        metadata: {
+          flow: "registration_pending",
+          alreadyVerified,
+        },
+      });
 
       return res.status(200).json({
         status: "Success",
@@ -705,11 +733,24 @@ const verifyEmail = async (req, res) => {
     // Legacy fallback: existing rows created before the pending-registration flow.
     const user = await findUserByEmailCaseInsensitive(emailNorm);
     if (!user) {
+      void recordAuthEvent({
+        req,
+        eventType: AUTH_EVENT_TYPE.OTP_EMAIL_VERIFICATION,
+        status: AUTH_EVENT_STATUS.FAILURE,
+        metadata: { reason: "user_not_found", flow: "legacy_user" },
+      });
       return res.status(400).json({ error: "Invalid email or code" });
     }
 
     if (user.emailVerified) {
       const accessToken = issueTokens(user.id, res);
+      void recordAuthEvent({
+        req,
+        userId: user.id,
+        eventType: AUTH_EVENT_TYPE.OTP_EMAIL_VERIFICATION,
+        status: AUTH_EVENT_STATUS.SUCCESS,
+        metadata: { flow: "legacy_user", alreadyVerified: true },
+      });
       return res.status(200).json({
         status: "Success",
         data: {
@@ -725,12 +766,26 @@ const verifyEmail = async (req, res) => {
     }
 
     if (!user.emailOtpHash || !user.emailOtpExpiresAt) {
+      void recordAuthEvent({
+        req,
+        userId: user.id,
+        eventType: AUTH_EVENT_TYPE.OTP_EMAIL_VERIFICATION,
+        status: AUTH_EVENT_STATUS.FAILURE,
+        metadata: { reason: "otp_not_active", flow: "legacy_user" },
+      });
       return res.status(400).json({
         error: "No verification code is active. Use resend to get a new code.",
       });
     }
 
     if (user.emailOtpExpiresAt.getTime() < Date.now()) {
+      void recordAuthEvent({
+        req,
+        userId: user.id,
+        eventType: AUTH_EVENT_TYPE.OTP_EMAIL_VERIFICATION,
+        status: AUTH_EVENT_STATUS.FAILURE,
+        metadata: { reason: "otp_expired", flow: "legacy_user" },
+      });
       return res.status(400).json({
         error: "Verification code expired. Request a new code.",
       });
@@ -738,6 +793,13 @@ const verifyEmail = async (req, res) => {
 
     const match = await bcrypt.compare(String(otp).trim(), user.emailOtpHash);
     if (!match) {
+      void recordAuthEvent({
+        req,
+        userId: user.id,
+        eventType: AUTH_EVENT_TYPE.OTP_EMAIL_VERIFICATION,
+        status: AUTH_EVENT_STATUS.FAILURE,
+        metadata: { reason: "invalid_otp", flow: "legacy_user" },
+      });
       return res.status(400).json({ error: "Invalid verification code" });
     }
 
@@ -752,6 +814,13 @@ const verifyEmail = async (req, res) => {
 
     const accessToken = issueTokens(user.id, res);
     void sendWelcomeEmail(user.email, user.name);
+    void recordAuthEvent({
+      req,
+      userId: user.id,
+      eventType: AUTH_EVENT_TYPE.OTP_EMAIL_VERIFICATION,
+      status: AUTH_EVENT_STATUS.SUCCESS,
+      metadata: { flow: "legacy_user", alreadyVerified: false },
+    });
 
     return res.status(200).json({
       status: "Success",
@@ -882,16 +951,36 @@ const verifyPasswordResetOtp = async (req, res) => {
     const otp = String(req.body.otp ?? "").trim();
     const user = await findUserByEmailCaseInsensitive(emailNorm);
     if (!user) {
+      void recordAuthEvent({
+        req,
+        eventType: AUTH_EVENT_TYPE.OTP_PASSWORD_RESET,
+        status: AUTH_EVENT_STATUS.FAILURE,
+        metadata: { reason: "user_not_found", phase: "verify_otp" },
+      });
       return res.status(400).json({ error: "Invalid email or code" });
     }
 
     if (!user.emailOtpHash || !user.emailOtpExpiresAt) {
+      void recordAuthEvent({
+        req,
+        userId: user.id,
+        eventType: AUTH_EVENT_TYPE.OTP_PASSWORD_RESET,
+        status: AUTH_EVENT_STATUS.FAILURE,
+        metadata: { reason: "otp_not_active", phase: "verify_otp" },
+      });
       return res.status(400).json({
         error: "No reset code is active. Generate a new OTP.",
       });
     }
 
     if (isOtpExpired(user.emailOtpExpiresAt)) {
+      void recordAuthEvent({
+        req,
+        userId: user.id,
+        eventType: AUTH_EVENT_TYPE.OTP_PASSWORD_RESET,
+        status: AUTH_EVENT_STATUS.FAILURE,
+        metadata: { reason: "otp_expired", phase: "verify_otp" },
+      });
       return res.status(400).json({
         error: "Reset OTP expired. Generate a new OTP.",
       });
@@ -899,8 +988,22 @@ const verifyPasswordResetOtp = async (req, res) => {
 
     const match = await bcrypt.compare(otp, user.emailOtpHash);
     if (!match) {
+      void recordAuthEvent({
+        req,
+        userId: user.id,
+        eventType: AUTH_EVENT_TYPE.OTP_PASSWORD_RESET,
+        status: AUTH_EVENT_STATUS.FAILURE,
+        metadata: { reason: "invalid_otp", phase: "verify_otp" },
+      });
       return res.status(400).json({ error: "Invalid reset OTP" });
     }
+    void recordAuthEvent({
+      req,
+      userId: user.id,
+      eventType: AUTH_EVENT_TYPE.OTP_PASSWORD_RESET,
+      status: AUTH_EVENT_STATUS.SUCCESS,
+      metadata: { phase: "verify_otp" },
+    });
 
     return res.status(200).json({
       status: "Success",
@@ -975,6 +1078,12 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email?.trim() || !password) {
+      void recordAuthEvent({
+        req,
+        eventType: AUTH_EVENT_TYPE.LOGIN,
+        status: AUTH_EVENT_STATUS.FAILURE,
+        metadata: { reason: "missing_credentials" },
+      });
       return res.status(400).json({
         error: "email and password are required",
       });
@@ -987,6 +1096,12 @@ const login = async (req, res) => {
     if (!user) {
       const pending = await findPendingRegistrationByEmailCaseInsensitive(emailNorm);
       if (pending) {
+        void recordAuthEvent({
+          req,
+          eventType: AUTH_EVENT_TYPE.LOGIN,
+          status: AUTH_EVENT_STATUS.FAILURE,
+          metadata: { reason: "email_not_verified_pending_registration" },
+        });
         return res.status(403).json({
           error:
             "Please verify your email before signing in. Complete OTP verification to finish account creation.",
@@ -994,6 +1109,12 @@ const login = async (req, res) => {
           email: pending.email,
         });
       }
+      void recordAuthEvent({
+        req,
+        eventType: AUTH_EVENT_TYPE.LOGIN,
+        status: AUTH_EVENT_STATUS.FAILURE,
+        metadata: { reason: "user_not_found" },
+      });
       return res
         .status(401)
         .json({ error: "Invalid email or password" });
@@ -1001,12 +1122,26 @@ const login = async (req, res) => {
 
     const match = await bcrypt.compare(String(password), user.password);
     if (!match) {
+      void recordAuthEvent({
+        req,
+        userId: user.id,
+        eventType: AUTH_EVENT_TYPE.LOGIN,
+        status: AUTH_EVENT_STATUS.FAILURE,
+        metadata: { reason: "invalid_password" },
+      });
       return res
         .status(401)
         .json({ error: "Invalid email or password" });
     }
 
     if (!user.emailVerified) {
+      void recordAuthEvent({
+        req,
+        userId: user.id,
+        eventType: AUTH_EVENT_TYPE.LOGIN,
+        status: AUTH_EVENT_STATUS.FAILURE,
+        metadata: { reason: "email_not_verified" },
+      });
       return res.status(403).json({
         error: "Please verify your email before signing in.",
         needsEmailVerification: true,
@@ -1015,6 +1150,13 @@ const login = async (req, res) => {
     }
 
     const accessToken = issueTokens(user.id, res);
+    void recordAuthEvent({
+      req,
+      userId: user.id,
+      eventType: AUTH_EVENT_TYPE.LOGIN,
+      status: AUTH_EVENT_STATUS.SUCCESS,
+      metadata: { reason: "authenticated" },
+    });
 
     return res.status(200).json({
       status: "Success",
@@ -1103,6 +1245,85 @@ const deleteAccount = async (req, res) => {
   }
 };
 
+const sendOtp = async (req, res) => {
+  const purpose = String(req.body?.purpose ?? "");
+  if (purpose === "RegisterAuthOtp" || purpose === "Authify_Register_user") {
+    return register(req, res);
+  }
+  if (purpose === "ForgotAuthOtp" || purpose === "Authify_Forgot_password") {
+    return requestPasswordResetOtp(req, res);
+  }
+  return res.status(400).json({
+    status: "Error",
+    error:
+      "Invalid purpose. Use RegisterAuthOtp/Authify_Register_user or ForgotAuthOtp/Authify_Forgot_password",
+  });
+};
+
+const verifyOtp = async (req, res) => {
+  const purpose = String(req.body?.purpose ?? "");
+  if (purpose === "RegisterAuthOtp" || purpose === "Authify_Register_user") {
+    return verifyEmail(req, res);
+  }
+  if (purpose === "ForgotAuthOtp" || purpose === "Authify_Forgot_password") {
+    return verifyPasswordResetOtp(req, res);
+  }
+  return res.status(400).json({
+    status: "Error",
+    error:
+      "Invalid purpose. Use RegisterAuthOtp/Authify_Register_user or ForgotAuthOtp/Authify_Forgot_password",
+  });
+};
+
+const refreshToken = async (req, res) => {
+  try {
+    const refreshTokenValue = req.cookies?.refreshToken;
+    if (!refreshTokenValue) {
+      clearAuthCookies(res);
+      return res.status(401).json({ status: "Error", error: "No refresh token" });
+    }
+
+    const accessToken = createAccessTokenFromRefreshToken(refreshTokenValue, res);
+    if (!accessToken) {
+      return res
+        .status(401)
+        .json({ status: "Error", error: "Invalid or expired refresh token" });
+    }
+
+    // Rotation: issue a fresh refresh token on every refresh.
+    const decoded = jwt.decode(refreshTokenValue);
+    const userId = decoded?.id;
+    if (userId) {
+      issueTokens(userId, res);
+    }
+
+    return res.status(200).json({
+      status: "Success",
+      data: { accessToken },
+    });
+  } catch (error) {
+    return handleAuthError(res, error);
+  }
+};
+
+const getCurrentUser = async (req, res) => {
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({ status: "Error", error: "Unauthorized token" });
+  }
+  return res.status(200).json({
+    status: "Success",
+    data: {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        emailVerified: user.emailVerified,
+      },
+    },
+  });
+};
+
 export {
   register,
   login,
@@ -1114,4 +1335,8 @@ export {
   requestPasswordResetOtp,
   verifyPasswordResetOtp,
   resetPassword,
+  sendOtp,
+  verifyOtp,
+  refreshToken,
+  getCurrentUser,
 };

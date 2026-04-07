@@ -1,0 +1,44 @@
+{
+  "name": "@fastAuth/auth-sdk",
+  "version": "1.0.0",
+  "description": "Lightweight React auth SDK with OTP flow and token persistence.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json && mkdir -p dist/components && cp src/components/login-modal.css dist/components/login-modal.css",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "typescript": "^5.6.3"
+  },
+  "keywords": [
+    "auth",
+    "sdk",
+    "react",
+    "jwt",
+    "otp",
+    "lightweight"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

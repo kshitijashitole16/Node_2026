@@ -10,6 +10,10 @@ import {
   requestPasswordResetOtp,
   verifyPasswordResetOtp,
   resetPassword,
+  sendOtp,
+  verifyOtp,
+  refreshToken,
+  getCurrentUser,
 } from "../controller/authController.js";
 import {
   loginSchema,
@@ -19,8 +23,11 @@ import {
   forgotPasswordRequestSchema,
   forgotPasswordVerifyOtpSchema,
   forgotPasswordResetSchema,
+  sendOtpSchema,
+  verifyOtpSchema,
 } from "../validators/authValidators.js";
 import { validateRequest } from "../middleware/validateRequest.js";
+import { authMiddleware } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -47,8 +54,12 @@ router.post(
   validateRequest(forgotPasswordResetSchema),
   resetPassword
 );
+router.post("/send-otp", validateRequest(sendOtpSchema), sendOtp);
+router.post("/verify-otp", validateRequest(verifyOtpSchema), verifyOtp);
 router.post("/refresh", refresh);
+router.post("/refresh-token", refreshToken);
 router.post("/logout", logout);
+router.get("/get-current-user", authMiddleware, getCurrentUser);
 router.delete("/account", validateRequest(loginSchema), deleteAccount);
 
 export default router;

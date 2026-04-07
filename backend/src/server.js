@@ -9,6 +9,8 @@ import { connectDb, disconnectDb } from "./config/db.js";
 import movieRoutes from "./routes/movieRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import watchlistRoutes from "./routes/watchListRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
+import secureAuthRoutes from "./routes/secureAuthRoutes.js";
 
 const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 dotenv.config({ path: path.join(backendRoot, ".env"), override: true });
@@ -108,6 +110,8 @@ app.use(async (_req, res, next) => {
 app.use("/movies", movieRoutes);
 app.use("/auth", authRoutes);
 app.use("/watchlist", watchlistRoutes);
+app.use("/analytics", analyticsRoutes);
+app.use("/secure-auth", secureAuthRoutes);
 
 const isVercel = Boolean(process.env.VERCEL);
 

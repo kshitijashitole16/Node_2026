@@ -28,6 +28,7 @@ model User {
   // Relations
   movies         Movie[]         @relation("MovieCreator")
   watchlistItems WatchlistItem[]
+  authEvents     AuthEvent[]
 }
 
 model PendingRegistration {
@@ -75,11 +76,38 @@ model WatchlistItem {
   @@unique([userId, movieId])
 }
 
+model AuthEvent {
+  id        String          @id @default(uuid())
+  userId    String?
+  eventType AuthEventType
+  status    AuthEventStatus
+  ipAddress String?
+  metadata  Json?
+  createdAt DateTime        @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([eventType, status, createdAt])
+  @@index([userId, createdAt])
+}
+
 enum WatchlistStatus {
   PLANNED
   WATCHING
   COMPLETED
   DROPPED
+}
+
+enum AuthEventType {
+  LOGIN
+  OTP_EMAIL_VERIFICATION
+  OTP_PASSWORD_RESET
+}
+
+enum AuthEventStatus {
+  SUCCESS
+  FAILURE
 }
 
 // USER -> MOVIE -> WATCHLIST
