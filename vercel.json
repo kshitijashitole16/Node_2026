@@ -36,8 +36,16 @@
       "destination": "backend/server.js"
     },
     {
+      "source": "/analytics/(.*)",
+      "destination": "backend/server.js"
+    },
+    {
+      "source": "/secure-auth/(.*)",
+      "destination": "backend/server.js"
+    },
+    {
       "source": "/(.*)",
-      "destination": "frontend/$1"
+      "destination": "frontend/index.html"
     }
   ]
 }
