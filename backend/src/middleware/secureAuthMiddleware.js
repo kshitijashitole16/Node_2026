@@ -1,6 +1,11 @@
 import { verifyAccessToken } from "../services/secureAuthService.js";
 
 export async function secureAuthMiddleware(req, res, next) {
+  // Allow CORS preflight without bearer token.
+  if (req.method === "OPTIONS") {
+    return next();
+  }
+
   const auth = String(req.headers.authorization || "");
   const [scheme, token] = auth.split(" ");
   if (scheme?.toLowerCase() !== "bearer" || !token) {

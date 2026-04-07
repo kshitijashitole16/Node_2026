@@ -4,6 +4,11 @@ import { prisma } from "../config/db.js";
 //read the token from the request
 //check if token is valid or not
 export const authMiddleware = async (req, res, next) => {
+  // CORS preflight should never require auth.
+  if (req.method === "OPTIONS") {
+    return next();
+  }
+
   let token;
   const authorization = req.headers.authorization;
   if (authorization) {
