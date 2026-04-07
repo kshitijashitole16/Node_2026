@@ -30,7 +30,18 @@ if (!process.env.SMTP_USER?.trim() || !process.env.SMTP_PASS?.trim()) {
 const app = express();
 
 function normalizeOrigin(origin) {
-  return String(origin || "").trim().replace(/\/+$/, "");
+  const raw = String(origin || "")
+    .trim()
+    .replace(/^['"]+|['"]+$/g, "");
+
+  if (!raw) return "";
+
+  try {
+    const parsed = new URL(raw);
+    return `${parsed.protocol}//${parsed.host}`.replace(/\/+$/, "");
+  } catch {
+    return raw.replace(/\/+$/, "");
+  }
 }
 
 function escapeRegex(value) {
