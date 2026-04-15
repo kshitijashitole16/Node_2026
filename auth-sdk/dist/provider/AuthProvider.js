@@ -7,7 +7,8 @@ export function AuthProvider({ children, apiUrl, appName, logo, primaryColor, co
         baseUrl: apiUrl,
         withCredentials: config?.withCredentials,
         getAccessToken: config?.getAccessToken,
-    }), [apiUrl, config?.getAccessToken, config?.withCredentials]);
+        analyticsAdminToken: config?.analyticsAdminToken,
+    }), [apiUrl, config?.analyticsAdminToken, config?.getAccessToken, config?.withCredentials]);
     const auth = useAuthController(mergedConfig);
     const didBootstrapRef = useRef(false);
     useEffect(() => {
@@ -26,12 +27,14 @@ export function AuthProvider({ children, apiUrl, appName, logo, primaryColor, co
         isLoading: auth.isLoading,
         loadingAction: auth.loadingAction,
         error: auth.error,
+        loginWithPassword: auth.loginWithPassword,
         loginWithOtp: auth.loginWithOtp,
         verifyOtp: auth.verifyOtp,
         logout: auth.logout,
         getCurrentUser: auth.getCurrentUser,
         clearError: auth.clearError,
-    }), [apiUrl, appName, logo, primaryColor, auth]);
+        analyticsAdminToken: config?.analyticsAdminToken,
+    }), [apiUrl, appName, logo, primaryColor, auth, config?.analyticsAdminToken]);
     return _jsx(AuthContext.Provider, { value: value, children: children });
 }
 export function useAuthContext() {

@@ -17,8 +17,12 @@ export declare function useAuthController<TUser extends AuthUser = AuthUser>(con
     user: TUser | null;
     isAuthenticated: boolean;
     isLoading: boolean;
-    loadingAction: "idle" | "loginWithOtp" | "verifyOtp" | "logout" | "getCurrentUser";
+    loadingAction: "idle" | "loginWithOtp" | "loginWithPassword" | "verifyOtp" | "logout" | "getCurrentUser";
     error: ApiError | null;
+    loginWithPassword: (input: {
+        email: string;
+        password: string;
+    }) => Promise<TUser>;
     loginWithOtp: (input: LoginWithOtpInput) => Promise<void>;
     verifyOtp: (input: VerifyOtpInput) => Promise<TUser>;
     logout: () => Promise<void>;

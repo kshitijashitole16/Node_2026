@@ -9,8 +9,12 @@ export type AuthContextValue<TUser extends AuthUser = AuthUser> = {
     user: TUser | null;
     isAuthenticated: boolean;
     isLoading: boolean;
-    loadingAction: "idle" | "loginWithOtp" | "verifyOtp" | "logout" | "getCurrentUser";
+    loadingAction: "idle" | "loginWithOtp" | "loginWithPassword" | "verifyOtp" | "logout" | "getCurrentUser";
     error: Error | null;
+    loginWithPassword: (input: {
+        email: string;
+        password: string;
+    }) => Promise<TUser>;
     loginWithOtp: (input: {
         email?: string;
         phone?: string;
@@ -27,6 +31,8 @@ export type AuthContextValue<TUser extends AuthUser = AuthUser> = {
     logout: () => Promise<void>;
     getCurrentUser: () => Promise<TUser | null>;
     clearError: () => void;
+    /** Forwarded to API client for protected analytics list routes (optional). */
+    analyticsAdminToken?: string;
 };
 type AuthProviderProps = {
     children: ReactNode;

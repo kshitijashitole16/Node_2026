@@ -1,3 +1,4 @@
+import { prisma } from "../config/db.js";
 import { fetchAuthAnalytics } from "../services/authAnalyticsService.js";
 import { generateAuthInsights } from "../services/aiInsightsService.js";
 import {
@@ -5,6 +6,7 @@ import {
   runAuthAssistant,
 } from "../services/authAssistantService.js";
 import { analyzeAuthLogs } from "../services/authLogAnalysisService.js";
+import { isAuthEventTableAvailable } from "../services/authEventService.js";
 
 function parseBoolean(value) {
   const normalized = String(value ?? "")
@@ -155,9 +157,115 @@ const analyzeAuthLogsWithAi = async (req, res) => {
   }
 };
 
+function parseLimit(value, fallback, max) {
+  const n = Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(Math.max(n, 1), max);
+}
+
+/** Paginated AuthEvent rows for operator dashboards (requires auth). */
+const getAuthEventsList = async (req, res) => {
+  try {
+    const limit = parseLimit(req.query.limit, 50, 200);
+    const offset = Math.max(Number.parseInt(String(req.query.offset ?? "0"), 10) || 0, 0);
+    const tableReady = await isAuthEventTableAvailable();
+    if (!tableReady) {
+      return res.status(200).json({
+        status: "Success",
+        data: {
+          items: [],
+          total: 0,
+          meta: { tableReady: false, limit, offset },
+        },
+      });
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.authEvent.findMany({
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+        include: {
+          user: { select: { id: true, email: true, name: true } },
+        },
+      }),
+      prisma.authEvent.count(),
+    ]);
+
+    const serialized = items.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      eventType: row.eventType,
+      status: row.status,
+      ipAddress: row.ipAddress,
+      metadata: row.metadata,
+      createdAt: row.createdAt.toISOString(),
+      user: row.user
+        ? { id: row.user.id, email: row.user.email, name: row.user.name }
+        : null,
+    }));
+
+    return res.status(200).json({
+      status: "Success",
+      data: {
+        items: serialized,
+        total,
+        meta: { tableReady: true, limit, offset },
+      },
+    });
+  } catch (error) {
+    console.error("[analytics] auth events list:", error);
+    return res.status(500).json({ error: "Failed to fetch auth events" });
+  }
+};
+
+/** Paginated User rows (no passwords) for dashboards (requires auth). */
+const getAuthUsersList = async (req, res) => {
+  try {
+    const limit = parseLimit(req.query.limit, 25, 100);
+    const page = Math.max(Number.parseInt(String(req.query.page ?? "1"), 10) || 1, 1);
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await Promise.all([
+      prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          emailVerified: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip,
+      }),
+      prisma.user.count(),
+    ]);
+
+    return res.status(200).json({
+      status: "Success",
+      data: {
+        items: items.map((u) => ({
+          ...u,
+          createdAt: u.createdAt.toISOString(),
+        })),
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    });
+  } catch (error) {
+    console.error("[analytics] users list:", error);
+    return res.status(500).json({ error: "Failed to fetch users" });
+  }
+};
+
 export {
   getAuthAnalytics,
   getAuthAnalyticsInsights,
   askAuthAnalyticsAssistant,
   analyzeAuthLogsWithAi,
+  getAuthEventsList,
+  getAuthUsersList,
 };

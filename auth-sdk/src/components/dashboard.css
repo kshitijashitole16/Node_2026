@@ -1,0 +1,128 @@
+.authify-dashboard {
+  --dash-border: #e2e8f0;
+  --dash-muted: #64748b;
+  --dash-bg: #f8fafc;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  color: #0f172a;
+  background: var(--dash-bg);
+  border: 1px solid var(--dash-border);
+  border-radius: 12px;
+  padding: 1rem;
+  max-width: 960px;
+}
+
+.authify-dashboard h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.15rem;
+}
+
+.authify-dashboard p {
+  margin: 0 0 0.75rem;
+  color: var(--dash-muted);
+  font-size: 0.9rem;
+}
+
+.authify-dashboard-tabs {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.authify-dashboard-tabs button {
+  border: 1px solid var(--dash-border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem;
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.authify-dashboard-tabs button[data-active="true"] {
+  border-color: var(--authify-primary, #3b82f6);
+  background: color-mix(in srgb, var(--authify-primary, #3b82f6) 12%, #fff);
+  font-weight: 600;
+}
+
+.authify-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.authify-dashboard-stat {
+  background: #fff;
+  border: 1px solid var(--dash-border);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+}
+
+.authify-dashboard-stat strong {
+  display: block;
+  font-size: 1.25rem;
+}
+
+.authify-dashboard-stat span {
+  font-size: 0.78rem;
+  color: var(--dash-muted);
+}
+
+.authify-dashboard-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--dash-border);
+  border-radius: 10px;
+  background: #fff;
+  max-height: 320px;
+}
+
+.authify-dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.authify-dashboard-table th,
+.authify-dashboard-table td {
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  border-bottom: 1px solid var(--dash-border);
+  vertical-align: top;
+}
+
+.authify-dashboard-table th {
+  background: #f1f5f9;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.authify-dashboard-muted {
+  color: var(--dash-muted);
+  font-size: 0.88rem;
+}
+
+.authify-dashboard-error {
+  color: #b91c1c;
+  font-size: 0.88rem;
+}
+
+.authify-dashboard-pager {
+  margin-top: 0.5rem;
+  font-size: 0.88rem;
+}
+
+.authify-dashboard-pager button {
+  border: none;
+  background: none;
+  color: var(--authify-primary, #3b82f6);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.authify-dashboard-pager button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

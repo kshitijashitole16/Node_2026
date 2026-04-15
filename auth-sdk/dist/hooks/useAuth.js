@@ -34,6 +34,31 @@ export function useAuthController(config) {
     const fail = useCallback((error) => {
         setState((prev) => ({ ...prev, isLoading: false, action: "idle", error: asApiError(error) }));
     }, []);
+    const loginWithPassword = useCallback(async (input) => {
+        begin("loginWithPassword");
+        try {
+            const email = normalizeIdentifier(input.email)?.toLowerCase();
+            if (!email) {
+                throw new Error("Email is required.");
+            }
+            if (!input.password) {
+                throw new Error("Password is required.");
+            }
+            const response = await client.loginWithPassword({
+                email,
+                password: input.password,
+            });
+            const nextUser = response.data.user;
+            setAccessToken(response.data.accessToken);
+            setStoredUser(nextUser);
+            done(nextUser);
+            return nextUser;
+        }
+        catch (error) {
+            fail(error);
+            throw error;
+        }
+    }, [begin, client, done, fail]);
     const loginWithOtp = useCallback(async (input) => {
         begin("loginWithOtp");
         try {
@@ -125,12 +150,23 @@ export function useAuthController(config) {
         isLoading: state.isLoading,
         loadingAction: state.action,
         error: state.error,
+        loginWithPassword,
         loginWithOtp,
         verifyOtp,
         logout,
         getCurrentUser,
         clearError: () => setState((prev) => ({ ...prev, error: null })),
-    }), [getCurrentUser, loginWithOtp, logout, state.action, state.error, state.isLoading, user, verifyOtp]);
+    }), [
+        getCurrentUser,
+        loginWithPassword,
+        loginWithOtp,
+        logout,
+        state.action,
+        state.error,
+        state.isLoading,
+        user,
+        verifyOtp,
+    ]);
     return value;
 }
 export const useAuth = useAuthController;

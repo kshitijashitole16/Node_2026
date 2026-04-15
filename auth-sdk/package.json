@@ -1,6 +1,6 @@
 {
-  "name": "@fastAuth/auth-sdk",
-  "version": "1.0.0",
+  "name": "@kshitijashitole/auth-sdk",
+  "version": "1.2.0",
   "description": "Lightweight React auth SDK with OTP flow and token persistence.",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,7 +18,7 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsc -p tsconfig.json && mkdir -p dist/components && cp src/components/login-modal.css dist/components/login-modal.css",
+    "build": "tsc -p tsconfig.json && mkdir -p dist/components && cp src/components/*.css dist/components/",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build"
   },

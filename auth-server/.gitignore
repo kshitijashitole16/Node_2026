@@ -1,0 +1,5 @@
+node_modules/
+# Synced from ../backend at publish time; do not commit duplicates
+/src
+/prisma
+/prisma.config.ts

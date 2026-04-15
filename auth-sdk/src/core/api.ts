@@ -9,6 +9,8 @@ export type FastAuthClientConfig = {
   baseUrl: string;
   withCredentials?: boolean;
   getAccessToken?: () => string | null;
+  /** Matches server `FAST_AUTH_ADMIN_SECRET` for GET /analytics/auth/events and /users. */
+  analyticsAdminToken?: string;
 };
 
 export type ApiRequestOptions = {
@@ -58,15 +60,36 @@ export type CurrentUserData<TUser extends AuthUser = AuthUser> = {
   user: TUser;
 };
 
+export type AuthEventRow = {
+  id: string;
+  userId: string | null;
+  eventType: string;
+  status: string;
+  ipAddress: string | null;
+  metadata: unknown;
+  createdAt: string;
+  user: { id: string; email: string; name: string } | null;
+};
+
+export type DashboardUserRow = {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  createdAt: string;
+};
+
 export class FastAuthApiClient {
   private readonly baseUrl: string;
   private readonly withCredentials: boolean;
   private readonly readToken: () => string | null;
+  private readonly analyticsAdminToken?: string;
 
   constructor(config: FastAuthClientConfig) {
     this.baseUrl = String(config.baseUrl || "").replace(/\/+$/, "");
     this.withCredentials = config.withCredentials ?? true;
     this.readToken = config.getAccessToken ?? getAccessToken;
+    this.analyticsAdminToken = config.analyticsAdminToken?.trim() || undefined;
     if (!this.baseUrl) {
       throw new Error("FastAuthApiClient requires a non-empty baseUrl");
     }
@@ -113,6 +136,96 @@ export class FastAuthApiClient {
     });
   }
 
+  /** Email + password sign-in; sets httpOnly cookies server-side and returns access token + user. */
+  async loginWithPassword<TUser extends AuthUser = AuthUser>(input: {
+    email: string;
+    password: string;
+  }): Promise<FastAuthResponse<VerifyOtpData<TUser>>> {
+    return this.request("/auth/login", {
+      method: "POST",
+      body: { email: input.email.trim().toLowerCase(), password: input.password },
+      auth: false,
+    });
+  }
+
+  async resetPassword(input: {
+    email: string;
+    otp: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<FastAuthResponse<Record<string, unknown>>> {
+    return this.request("/auth/forgot-password/reset", {
+      method: "POST",
+      body: {
+        email: input.email.trim().toLowerCase(),
+        otp: input.otp.trim(),
+        newPassword: input.newPassword,
+        confirmPassword: input.confirmPassword,
+      },
+      auth: false,
+    });
+  }
+
+  /** Aggregated charts and totals (same payload as backend GET /analytics/auth). */
+  async getAuthAnalytics(
+    query?: Record<string, string | number | boolean | undefined>
+  ): Promise<FastAuthResponse<Record<string, unknown>>> {
+    const qs = new URLSearchParams();
+    if (query) {
+      for (const [k, v] of Object.entries(query)) {
+        if (v === undefined) continue;
+        qs.set(k, String(v));
+      }
+    }
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return this.request(`/analytics/auth${suffix}`, {
+      method: "GET",
+      auth: true,
+    });
+  }
+
+  async getAuthEventsPage(input?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<
+    FastAuthResponse<{
+      items: AuthEventRow[];
+      total: number;
+      meta: { tableReady: boolean; limit: number; offset: number };
+    }>
+  > {
+    const qs = new URLSearchParams();
+    if (input?.limit != null) qs.set("limit", String(input.limit));
+    if (input?.offset != null) qs.set("offset", String(input.offset));
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return this.request(`/analytics/auth/events${suffix}`, {
+      method: "GET",
+      auth: true,
+    });
+  }
+
+  async getUsersPage(input?: {
+    page?: number;
+    limit?: number;
+  }): Promise<
+    FastAuthResponse<{
+      items: DashboardUserRow[];
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    }>
+  > {
+    const qs = new URLSearchParams();
+    if (input?.page != null) qs.set("page", String(input.page));
+    if (input?.limit != null) qs.set("limit", String(input.limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return this.request(`/analytics/auth/users${suffix}`, {
+      method: "GET",
+      auth: true,
+    });
+  }
+
   private async request<T>(
     path: string,
     options: {
@@ -131,6 +244,13 @@ export class FastAuthApiClient {
       if (token) {
         headers.set("Authorization", `Bearer ${token}`);
       }
+    }
+
+    if (
+      this.analyticsAdminToken &&
+      (path.includes("/analytics/auth/events") || path.includes("/analytics/auth/users"))
+    ) {
+      headers.set("x-admin-token", this.analyticsAdminToken);
     }
 
     const res = await fetch(`${this.baseUrl}${path}`, {

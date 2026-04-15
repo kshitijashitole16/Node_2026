@@ -7,8 +7,6 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/auth": { target: "http://127.0.0.1:5001", changeOrigin: true },
-      "/movies": { target: "http://127.0.0.1:5001", changeOrigin: true },
-      "/watchlist": { target: "http://127.0.0.1:5001", changeOrigin: true },
       "/analytics": { target: "http://127.0.0.1:5001", changeOrigin: true },
     },
   },

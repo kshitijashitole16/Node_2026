@@ -3,3 +3,8 @@ export { getAccessToken, setAccessToken, clearStoredAuth, getStoredUser, setStor
 export { AuthProvider, useAuth, useAuthContext } from "./provider/AuthProvider";
 export { useAuthController } from "./hooks/useAuth";
 export { LoginModal } from "./components/LoginModal";
+export { PasswordLoginModal } from "./components/PasswordLoginModal";
+export { RegisterModal } from "./components/RegisterModal";
+export { ForgotPasswordModal } from "./components/ForgotPasswordModal";
+export { AuthDashboard } from "./components/AuthDashboard";
+export { OtpCodePanel } from "./components/OtpCodePanel";

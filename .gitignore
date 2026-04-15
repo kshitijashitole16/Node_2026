@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+
+# Secrets & local env (never commit real credentials)
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+# Do not use `.env.*` alone — it matches `.env.example`. Keep examples in git:
+!.env.example
+!**/.env.example
+
+# Logs & debug
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build & bundler output
+dist/
+build/
+out/
+.next/
+.nuxt/
+.turbo/
+.vite/
+.cache/
+coverage/
+*.tsbuildinfo
+
+# Vercel
+.vercel
+
+# Prisma local DB files (if you ever use sqlite)
+*.db
+*.db-journal
+
+# IDE / editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.cursor/
+
+# npm package tarball previews
+*.tgz
+
+# Published SDK build output (rebuild with: cd auth-sdk && npm run build)
+auth-sdk/dist/
+
+# auth-server: copied from ../backend at publish time — don’t duplicate in git
+auth-server/src/
+auth-server/prisma/
+auth-server/prisma.config.ts

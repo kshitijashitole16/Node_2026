@@ -1,9 +1,11 @@
-node_modules
-# Keep environment variables out of version control
+node_modules/
+
+# Environment
 .env
-
-/src/generated/prisma
-
-/src/generated/prisma
-.vercel
 .env*.local
+
+# Vercel
+.vercel
+
+# Legacy / unused generated path (safe to keep ignored)
+/src/generated/prisma

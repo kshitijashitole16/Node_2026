@@ -30,7 +30,13 @@ type VerifyOtpInput = {
 
 type UseAuthState = {
   isLoading: boolean;
-  action: "idle" | "loginWithOtp" | "verifyOtp" | "logout" | "getCurrentUser";
+  action:
+    | "idle"
+    | "loginWithOtp"
+    | "loginWithPassword"
+    | "verifyOtp"
+    | "logout"
+    | "getCurrentUser";
   error: ApiError | null;
 };
 
@@ -79,6 +85,34 @@ export function useAuthController<TUser extends AuthUser = AuthUser>(
   const fail = useCallback((error: unknown) => {
     setState((prev) => ({ ...prev, isLoading: false, action: "idle", error: asApiError(error) }));
   }, []);
+
+  const loginWithPassword = useCallback(
+    async (input: { email: string; password: string }) => {
+      begin("loginWithPassword");
+      try {
+        const email = normalizeIdentifier(input.email)?.toLowerCase();
+        if (!email) {
+          throw new Error("Email is required.");
+        }
+        if (!input.password) {
+          throw new Error("Password is required.");
+        }
+        const response = await client.loginWithPassword<TUser>({
+          email,
+          password: input.password,
+        });
+        const nextUser = response.data.user;
+        setAccessToken(response.data.accessToken);
+        setStoredUser(nextUser);
+        done(nextUser);
+        return nextUser;
+      } catch (error) {
+        fail(error);
+        throw error;
+      }
+    },
+    [begin, client, done, fail]
+  );
 
   const loginWithOtp = useCallback(
     async (input: LoginWithOtpInput) => {
@@ -184,13 +218,24 @@ export function useAuthController<TUser extends AuthUser = AuthUser>(
       isLoading: state.isLoading,
       loadingAction: state.action,
       error: state.error,
+      loginWithPassword,
       loginWithOtp,
       verifyOtp,
       logout,
       getCurrentUser,
       clearError: () => setState((prev) => ({ ...prev, error: null })),
     }),
-    [getCurrentUser, loginWithOtp, logout, state.action, state.error, state.isLoading, user, verifyOtp]
+    [
+      getCurrentUser,
+      loginWithPassword,
+      loginWithOtp,
+      logout,
+      state.action,
+      state.error,
+      state.isLoading,
+      user,
+      verifyOtp,
+    ]
   );
 
   return value;

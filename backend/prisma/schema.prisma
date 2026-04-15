@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -25,10 +22,7 @@ model User {
 
   createdAt DateTime @default(now())
 
-  // Relations
-  movies         Movie[]         @relation("MovieCreator")
-  watchlistItems WatchlistItem[]
-  authEvents     AuthEvent[]
+  authEvents AuthEvent[]
 }
 
 model PendingRegistration {
@@ -42,38 +36,6 @@ model PendingRegistration {
   updatedAt DateTime @updatedAt
 
   @@map("RegistrationPending")
-}
-
-model Movie {
-  id          String   @id @default(uuid())
-  title       String
-  overview    String?
-  releaseYear Int      
-  genres      String[] @default([])
-  runtime     Int?
-  posterUrl   String?  
-  createdBy   String   
-  createdAt   DateTime @default(now()) 
-
-  creator User  @relation("MovieCreator", fields: [createdBy], references: [id], onDelete: Cascade)
-  watchlistItems WatchlistItem[]
-}
-
-model WatchlistItem {
-  id        String   @id @default(uuid())
-  userId    String   
-  movieId   String   
-  status    WatchlistStatus @default(PLANNED)
-  rating    Int?
-  notes     String?
-  createdAt DateTime @default(now()) 
-  updatedAt DateTime @default(now()) 
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  movie Movie @relation(fields: [movieId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, movieId])
 }
 
 model AuthEvent {
@@ -92,13 +54,6 @@ model AuthEvent {
   @@index([userId, createdAt])
 }
 
-enum WatchlistStatus {
-  PLANNED
-  WATCHING
-  COMPLETED
-  DROPPED
-}
-
 enum AuthEventType {
   LOGIN
   OTP_EMAIL_VERIFICATION
@@ -109,5 +64,3 @@ enum AuthEventStatus {
   SUCCESS
   FAILURE
 }
-
-// USER -> MOVIE -> WATCHLIST

@@ -4,6 +4,7 @@ export class FastAuthApiClient {
         this.baseUrl = String(config.baseUrl || "").replace(/\/+$/, "");
         this.withCredentials = config.withCredentials ?? true;
         this.readToken = config.getAccessToken ?? getAccessToken;
+        this.analyticsAdminToken = config.analyticsAdminToken?.trim() || undefined;
         if (!this.baseUrl) {
             throw new Error("FastAuthApiClient requires a non-empty baseUrl");
         }
@@ -40,6 +41,66 @@ export class FastAuthApiClient {
             auth: true,
         });
     }
+    /** Email + password sign-in; sets httpOnly cookies server-side and returns access token + user. */
+    async loginWithPassword(input) {
+        return this.request("/auth/login", {
+            method: "POST",
+            body: { email: input.email.trim().toLowerCase(), password: input.password },
+            auth: false,
+        });
+    }
+    async resetPassword(input) {
+        return this.request("/auth/forgot-password/reset", {
+            method: "POST",
+            body: {
+                email: input.email.trim().toLowerCase(),
+                otp: input.otp.trim(),
+                newPassword: input.newPassword,
+                confirmPassword: input.confirmPassword,
+            },
+            auth: false,
+        });
+    }
+    /** Aggregated charts and totals (same payload as backend GET /analytics/auth). */
+    async getAuthAnalytics(query) {
+        const qs = new URLSearchParams();
+        if (query) {
+            for (const [k, v] of Object.entries(query)) {
+                if (v === undefined)
+                    continue;
+                qs.set(k, String(v));
+            }
+        }
+        const suffix = qs.toString() ? `?${qs.toString()}` : "";
+        return this.request(`/analytics/auth${suffix}`, {
+            method: "GET",
+            auth: true,
+        });
+    }
+    async getAuthEventsPage(input) {
+        const qs = new URLSearchParams();
+        if (input?.limit != null)
+            qs.set("limit", String(input.limit));
+        if (input?.offset != null)
+            qs.set("offset", String(input.offset));
+        const suffix = qs.toString() ? `?${qs.toString()}` : "";
+        return this.request(`/analytics/auth/events${suffix}`, {
+            method: "GET",
+            auth: true,
+        });
+    }
+    async getUsersPage(input) {
+        const qs = new URLSearchParams();
+        if (input?.page != null)
+            qs.set("page", String(input.page));
+        if (input?.limit != null)
+            qs.set("limit", String(input.limit));
+        const suffix = qs.toString() ? `?${qs.toString()}` : "";
+        return this.request(`/analytics/auth/users${suffix}`, {
+            method: "GET",
+            auth: true,
+        });
+    }
     async request(path, options) {
         const headers = new Headers();
         if (options.body !== undefined) {
@@ -50,6 +111,10 @@ export class FastAuthApiClient {
             if (token) {
                 headers.set("Authorization", `Bearer ${token}`);
             }
+        }
+        if (this.analyticsAdminToken &&
+            (path.includes("/analytics/auth/events") || path.includes("/analytics/auth/users"))) {
+            headers.set("x-admin-token", this.analyticsAdminToken);
         }
         const res = await fetch(`${this.baseUrl}${path}`, {
             method: options.method,

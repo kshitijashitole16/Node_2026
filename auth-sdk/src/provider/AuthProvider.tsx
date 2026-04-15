@@ -18,8 +18,15 @@ export type AuthContextValue<TUser extends AuthUser = AuthUser> = {
   user: TUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  loadingAction: "idle" | "loginWithOtp" | "verifyOtp" | "logout" | "getCurrentUser";
+  loadingAction:
+    | "idle"
+    | "loginWithOtp"
+    | "loginWithPassword"
+    | "verifyOtp"
+    | "logout"
+    | "getCurrentUser";
   error: Error | null;
+  loginWithPassword: (input: { email: string; password: string }) => Promise<TUser>;
   loginWithOtp: (input: {
     email?: string;
     phone?: string;
@@ -36,6 +43,8 @@ export type AuthContextValue<TUser extends AuthUser = AuthUser> = {
   logout: () => Promise<void>;
   getCurrentUser: () => Promise<TUser | null>;
   clearError: () => void;
+  /** Forwarded to API client for protected analytics list routes (optional). */
+  analyticsAdminToken?: string;
 };
 
 type AuthProviderProps = {
@@ -65,8 +74,9 @@ export function AuthProvider({
       baseUrl: apiUrl,
       withCredentials: config?.withCredentials,
       getAccessToken: config?.getAccessToken,
+      analyticsAdminToken: config?.analyticsAdminToken,
     }),
-    [apiUrl, config?.getAccessToken, config?.withCredentials]
+    [apiUrl, config?.analyticsAdminToken, config?.getAccessToken, config?.withCredentials]
   );
 
   const auth = useAuthController(mergedConfig);
@@ -89,13 +99,15 @@ export function AuthProvider({
       isLoading: auth.isLoading,
       loadingAction: auth.loadingAction,
       error: auth.error,
+      loginWithPassword: auth.loginWithPassword,
       loginWithOtp: auth.loginWithOtp,
       verifyOtp: auth.verifyOtp,
       logout: auth.logout,
       getCurrentUser: auth.getCurrentUser,
       clearError: auth.clearError,
+      analyticsAdminToken: config?.analyticsAdminToken,
     }),
-    [apiUrl, appName, logo, primaryColor, auth]
+    [apiUrl, appName, logo, primaryColor, auth, config?.analyticsAdminToken]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

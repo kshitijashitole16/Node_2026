@@ -1,109 +1,61 @@
+# @kshitijashitole/auth-sdk
 
-# @fastAuth/auth-sdk
+Lightweight React components and a small API client for email/password auth, OTP registration, password reset, and an optional in-app dashboard (analytics, auth event logs, user list).
 
-Lightweight OTP authentication SDK for React applications.
-
-## Installation
+## Install
 
 ```bash
-npm install @fastAuth/auth-sdk
+npm install @kshitijashitole/auth-sdk
 ```
 
-## Basic Usage
+Peer dependency: `react` >= 18.
+
+## Backend
+
+This SDK talks to the HTTP API under `/auth` and `/analytics` (see the `backend` app in this repo). Hosts must:
+
+- Set `DATABASE_URL` and run Prisma migrations (same schema as this project’s `backend/prisma`).
+- Configure JWT (`JWT_ACCESS_SECRET` or `JWT_SECRET`), SMTP for OTP emails, and CORS (`FRONTEND_URL` / `CORS_ORIGINS`).
+
+Mount the backend app (or equivalent routes) so your frontend’s `apiUrl` points at the same origin you allow in CORS, with `credentials` enabled if you use cookies.
+
+## Quick usage
+
+Wrap your app with `AuthProvider` and import the CSS used by the modals and dashboard:
 
 ```tsx
-import React from "react";
-import { AuthProvider, useAuthContext, LoginModal } from "@fastAuth/auth-sdk";
-import "@fastAuth/auth-sdk/dist/components/login-modal.css";
+import { AuthProvider, PasswordLoginModal, AuthDashboard } from "@kshitijashitole/auth-sdk";
+import "@kshitijashitole/auth-sdk/dist/components/login-modal.css";
+import "@kshitijashitole/auth-sdk/dist/components/dashboard.css";
 
-function App() {
+export function App() {
   return (
-    <AuthProvider
-      apiUrl="https://api.example.com"
-      appName="Authify"
-      logo="https://cdn.example.com/logo.svg"
-      primaryColor="#4f46e5"
-      autoRefreshOnLoad
-    >
-      <LoginPage />
+    <AuthProvider apiUrl={import.meta.env.VITE_AUTH_API_URL} appName="My App">
+      <AuthDashboard />
     </AuthProvider>
   );
 }
-
-function LoginPage() {
-  const [open, setOpen] = React.useState(false);
-  const { user, isAuthenticated, logout } = useAuthContext();
-
-  return (
-    <div>
-      {!isAuthenticated ? (
-        <>
-          <button onClick={() => setOpen(true)}>Login</button>
-          <LoginModal open={open} onClose={() => setOpen(false)} />
-        </>
-      ) : (
-        <>
-          <p>Logged in as {user?.email}</p>
-          <button onClick={logout}>Logout</button>
-        </>
-      )}
-    </div>
-  );
-}
 ```
 
-## API Reference
+- **Login:** `PasswordLoginModal` (or deprecated alias `LoginModal`) — `POST /auth/login`.
+- **Register:** `RegisterModal` — `POST /auth/send-otp` + `POST /auth/verify-otp` with `RegisterAuthOtp`.
+- **Forgot password:** `ForgotPasswordModal` — unified OTP + `POST /auth/forgot-password/reset`.
+- **Dashboard:** `AuthDashboard` — overview uses `GET /analytics/auth` (JWT). **Users** and **API logs** tabs call `GET /analytics/auth/users` and `GET /analytics/auth/events`, which require **admin** access on the server (see below).
 
-### `AuthProvider`
+Pass an admin token from the client if you use `FAST_AUTH_ADMIN_SECRET` on the API:
 
-Required props:
-- `apiUrl: string` - backend base URL
-- `appName: string` - displayed in auth UI
+```tsx
+<AuthProvider
+  apiUrl={import.meta.env.VITE_AUTH_API_URL}
+  appName="My App"
+  config={{ analyticsAdminToken: import.meta.env.VITE_AUTH_ADMIN_TOKEN }}
+>
+```
 
-Optional props:
-- `logo?: string`
-- `primaryColor?: string`
-- `autoRefreshOnLoad?: boolean` (default: `true`)
-- `config?: { withCredentials?: boolean; getAccessToken?: () => string | null }`
+## Prisma Studio
 
-### `useAuthContext()`
+To inspect raw tables locally, run `npx prisma studio` from the backend or `auth-server` package. The dashboard complements Studio with auth-focused views inside your product UI.
 
-Returns:
-- `user`
-- `isAuthenticated`
-- `isLoading`
-- `loadingAction`
-- `error`
-- `loginWithOtp(input)`
-- `verifyOtp(input)`
-- `getCurrentUser()`
-- `logout()`
-- `clearError()`
+## Security note
 
-### OTP input payloads
-
-`loginWithOtp(input)`:
-- `email?: string`
-- `phone?: string`
-- `purpose?: "Authify_Register_user" | "Authify_Forgot_password" | "RegisterAuthOtp" | "ForgotAuthOtp"`
-- `name?: string`
-- `password?: string`
-
-`verifyOtp(input)`:
-- `code: string`
-- `email?: string`
-- `phone?: string`
-- `purpose?: "Authify_Register_user" | "Authify_Forgot_password" | "RegisterAuthOtp" | "ForgotAuthOtp"`
-
-## Backend Endpoints Required
-
-- `POST /auth/send-otp`
-- `POST /auth/verify-otp`
-- `POST /auth/refresh-token`
-- `GET /auth/get-current-user`
-- `POST /auth/logout`
-
-## Notes
-
-- Designed for app integration only (no dashboard code included).
-- Uses native `fetch` and minimal dependencies.
+On the server, configure **`FAST_AUTH_ADMIN_EMAILS`** (comma-separated) and/or **`FAST_AUTH_ADMIN_SECRET`** for listing users and raw auth events. Without them, those two endpoints respond with **503**. Aggregated analytics (`GET /analytics/auth`) still require a normal authenticated user.

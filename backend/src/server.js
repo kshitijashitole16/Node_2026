@@ -6,9 +6,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { connectDb, disconnectDb } from "./config/db.js";
-import movieRoutes from "./routes/movieRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import watchlistRoutes from "./routes/watchListRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
 import secureAuthRoutes from "./routes/secureAuthRoutes.js";
 
@@ -118,9 +116,7 @@ app.use(async (_req, res, next) => {
   }
 });
 
-app.use("/movies", movieRoutes);
 app.use("/auth", authRoutes);
-app.use("/watchlist", watchlistRoutes);
 app.use("/analytics", analyticsRoutes);
 app.use("/secure-auth", secureAuthRoutes);
 

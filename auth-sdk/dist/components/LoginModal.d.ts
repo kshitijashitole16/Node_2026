@@ -1,12 +1,4 @@
-import { type SendOtpPurpose } from "../core/api";
-export type LoginModalProps = {
-    open: boolean;
-    onClose: () => void;
-    onOtpSent?: (email: string) => void;
-    purpose?: SendOtpPurpose;
-    title?: string;
-    subtitle?: string;
-    className?: string;
-};
-export declare function LoginModal({ open, onClose, onOtpSent, purpose, title, subtitle, className, }: LoginModalProps): import("react/jsx-runtime").JSX.Element | null;
+export { PasswordLoginModal, type PasswordLoginModalProps } from "./PasswordLoginModal";
+export { PasswordLoginModal as LoginModal } from "./PasswordLoginModal";
+export type { PasswordLoginModalProps as LoginModalProps } from "./PasswordLoginModal";
 //# sourceMappingURL=LoginModal.d.ts.map

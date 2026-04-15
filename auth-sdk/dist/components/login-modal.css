@@ -158,6 +158,23 @@
   cursor: not-allowed;
 }
 
+.authify-modal-linkish {
+  margin-top: 0.35rem;
+  border: none;
+  background: none;
+  color: var(--authify-primary);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  text-decoration: underline;
+  justify-self: start;
+}
+
+.authify-modal-linkish:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (max-width: 480px) {
   .authify-modal {
     max-width: none;

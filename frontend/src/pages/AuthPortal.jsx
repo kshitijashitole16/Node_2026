@@ -550,8 +550,8 @@ export function AuthPortal() {
                     : forgotStep === "reset"
                       ? "Enter your new password and confirm it before OTP expires."
                       : mode === "login"
-                        ? "Sign in to continue exploring your watchlist."
-                        : "Create an account to save movies and lists."}
+                        ? "Sign in to your account."
+                        : "Create an account to get started."}
             </p>
           </header>
 

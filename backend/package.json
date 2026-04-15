@@ -17,8 +17,7 @@
     "dev": "nodemon src/server.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio --port 5555 --browser none",
-    "seed:movies": "node prisma/seed.movies.js"
+    "db:studio": "prisma studio --port 5555 --browser none"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

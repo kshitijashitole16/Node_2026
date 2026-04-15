@@ -1,0 +1,57 @@
+{
+  "name": "@kshitijashitole/auth-server",
+  "version": "1.1.0",
+  "description": "Express API server with Prisma auth, analytics, and related routes — mount in your host app or run standalone.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "src",
+    "prisma",
+    "prisma.config.ts",
+    ".env.example"
+  ],
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "sync": "node scripts/prepublish.mjs",
+    "prepublishOnly": "node scripts/prepublish.mjs && prisma generate",
+    "start": "prisma migrate deploy && node src/server.js",
+    "dev": "node --watch src/server.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio --port 5555 --browser none"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.6.0",
+    "@prisma/client": "7.6.0",
+    "prisma": "7.6.0",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^8.0.4",
+    "pg": "^8.16.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  },
+  "keywords": [
+    "express",
+    "auth",
+    "prisma",
+    "postgresql",
+    "api"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

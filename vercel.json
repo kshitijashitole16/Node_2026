@@ -28,14 +28,6 @@
       "destination": "backend/server.js"
     },
     {
-      "source": "/movies/(.*)",
-      "destination": "backend/server.js"
-    },
-    {
-      "source": "/watchlist/(.*)",
-      "destination": "backend/server.js"
-    },
-    {
       "source": "/analytics/(.*)",
       "destination": "backend/server.js"
     },

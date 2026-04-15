@@ -7,6 +7,8 @@ export type FastAuthClientConfig = {
     baseUrl: string;
     withCredentials?: boolean;
     getAccessToken?: () => string | null;
+    /** Matches server `FAST_AUTH_ADMIN_SECRET` for GET /analytics/auth/events and /users. */
+    analyticsAdminToken?: string;
 };
 export type ApiRequestOptions = {
     method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -43,16 +45,73 @@ export type RefreshTokenData = {
 export type CurrentUserData<TUser extends AuthUser = AuthUser> = {
     user: TUser;
 };
+export type AuthEventRow = {
+    id: string;
+    userId: string | null;
+    eventType: string;
+    status: string;
+    ipAddress: string | null;
+    metadata: unknown;
+    createdAt: string;
+    user: {
+        id: string;
+        email: string;
+        name: string;
+    } | null;
+};
+export type DashboardUserRow = {
+    id: string;
+    name: string;
+    email: string;
+    emailVerified: boolean;
+    createdAt: string;
+};
 export declare class FastAuthApiClient {
     private readonly baseUrl;
     private readonly withCredentials;
     private readonly readToken;
+    private readonly analyticsAdminToken?;
     constructor(config: FastAuthClientConfig);
     sendOtp(input: SendOtpInput): Promise<FastAuthResponse<Record<string, unknown>>>;
     verifyOtp<TUser extends AuthUser = AuthUser>(input: VerifyOtpInput): Promise<FastAuthResponse<VerifyOtpData<TUser>>>;
     refreshToken(): Promise<FastAuthResponse<RefreshTokenData>>;
     getCurrentUser<TUser extends AuthUser = AuthUser>(): Promise<FastAuthResponse<CurrentUserData<TUser>>>;
     logout(): Promise<FastAuthResponse<Record<string, unknown>>>;
+    /** Email + password sign-in; sets httpOnly cookies server-side and returns access token + user. */
+    loginWithPassword<TUser extends AuthUser = AuthUser>(input: {
+        email: string;
+        password: string;
+    }): Promise<FastAuthResponse<VerifyOtpData<TUser>>>;
+    resetPassword(input: {
+        email: string;
+        otp: string;
+        newPassword: string;
+        confirmPassword: string;
+    }): Promise<FastAuthResponse<Record<string, unknown>>>;
+    /** Aggregated charts and totals (same payload as backend GET /analytics/auth). */
+    getAuthAnalytics(query?: Record<string, string | number | boolean | undefined>): Promise<FastAuthResponse<Record<string, unknown>>>;
+    getAuthEventsPage(input?: {
+        limit?: number;
+        offset?: number;
+    }): Promise<FastAuthResponse<{
+        items: AuthEventRow[];
+        total: number;
+        meta: {
+            tableReady: boolean;
+            limit: number;
+            offset: number;
+        };
+    }>>;
+    getUsersPage(input?: {
+        page?: number;
+        limit?: number;
+    }): Promise<FastAuthResponse<{
+        items: DashboardUserRow[];
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    }>>;
     private request;
     private parseJson;
 }
