@@ -117,6 +117,7 @@ function formatOtpSeconds(totalSeconds) {
 export function AuthPortal() {
   const { signInSession } = useAuth();
   const [mode, setMode] = useState("login");
+  const [theme, setTheme] = useState("light");
   const [formError, setFormError] = useState("");
   const [remember, setRemember] = useState(false);
   const [welcomeBanner, setWelcomeBanner] = useState(null);
@@ -171,6 +172,13 @@ export function AuthPortal() {
     }, 1000);
     return () => clearInterval(id);
   }, [forgotOtpTimer]);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("auth-theme");
+    if (savedTheme === "dark" || savedTheme === "light") {
+      setTheme(savedTheme);
+    }
+  }, []);
 
   const closeForgotFlow = useCallback(() => {
     setForgotStep(null);
@@ -513,9 +521,17 @@ export function AuthPortal() {
     if (formError) setFormError("");
   }
 
+  function toggleTheme() {
+    setTheme((prev) => {
+      const next = prev === "dark" ? "light" : "dark";
+      localStorage.setItem("auth-theme", next);
+      return next;
+    });
+  }
+
   return (
     <>
-    <div className="auth-split-page">
+    <div className={`auth-split-page auth-split-page--${theme}`}>
       <div className="auth-split-card">
         <aside className="auth-hero">
           <div className="auth-hero-brand">
@@ -527,6 +543,14 @@ export function AuthPortal() {
 
         <div className="auth-panel">
           <header className="auth-panel__head">
+            <button
+              type="button"
+              className="auth-theme-toggle"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+            >
+              {theme === "dark" ? "Light" : "Dark"}
+            </button>
             <h1 className="auth-panel__title">
               {verificationEmail
                 ? "Verify your email"
